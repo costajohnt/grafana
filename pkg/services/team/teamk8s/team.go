@@ -38,6 +38,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/apiserver"
 	"github.com/grafana/grafana/pkg/services/apiserver/endpoints/request"
 	"github.com/grafana/grafana/pkg/services/contexthandler"
+	contextmodel "github.com/grafana/grafana/pkg/services/contexthandler/model"
 	"github.com/grafana/grafana/pkg/services/team"
 	"github.com/grafana/grafana/pkg/services/user"
 	"github.com/grafana/grafana/pkg/setting"
@@ -94,17 +95,42 @@ func (s *TeamK8sService) getDynamicClient(ctx context.Context, namespace string,
 		return nil, errors.New("config provider not initialized")
 	}
 
-	reqCtx := contexthandler.FromContext(ctx)
-	if reqCtx == nil {
-		return nil, errors.New("no request context")
+	reqCtx, err := requestContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	dyn, err := dynamic.NewForConfig(s.configProvider.GetDirectRestConfig(reqCtx))
+	dyn, err := dynamic.NewForConfig(s.directRestConfig(reqCtx))
 	if err != nil {
 		return nil, err
 	}
 
 	return dyn.Resource(gvr).Namespace(namespace), nil
+}
+
+// requestContext lets callers outside an HTTP request, such as background syncs, use the clients when
+// ctx carries their identity: the direct rest config only reads the request context to fall back to its
+// signed-in user.
+func requestContext(ctx context.Context) (*contextmodel.ReqContext, error) {
+	if reqCtx := contexthandler.FromContext(ctx); reqCtx != nil {
+		return reqCtx, nil
+	}
+	if _, err := identity.GetRequester(ctx); err == nil {
+		return &contextmodel.ReqContext{}, nil
+	}
+	return nil, errors.New("no request context")
+}
+
+// directRestConfig disables client-side rate limiting: requests are served in process, and each call
+// builds a new client, so the default 5 QPS limiter only delays reads that fan out per team.
+func (s *TeamK8sService) directRestConfig(reqCtx *contextmodel.ReqContext) *rest.Config {
+	cfg := s.configProvider.GetDirectRestConfig(reqCtx)
+	if cfg == nil {
+		return nil
+	}
+	cfg = rest.CopyConfig(cfg)
+	cfg.QPS = -1
+	return cfg
 }
 
 func (s *TeamK8sService) getClient(ctx context.Context, namespace string) (dynamic.ResourceInterface, error) {
@@ -231,11 +257,11 @@ func (s *TeamK8sService) getUserClient(ctx context.Context) (*iamv0alpha1.UserCl
 	if s.configProvider == nil {
 		return nil, errors.New("config provider not initialized")
 	}
-	reqCtx := contexthandler.FromContext(ctx)
-	if reqCtx == nil {
-		return nil, errors.New("no request context")
+	reqCtx, err := requestContext(ctx)
+	if err != nil {
+		return nil, err
 	}
-	restConfig := s.configProvider.GetDirectRestConfig(reqCtx)
+	restConfig := s.directRestConfig(reqCtx)
 	if restConfig == nil {
 		return nil, errors.New("rest config not available")
 	}
@@ -568,12 +594,12 @@ func (s *TeamK8sService) getRESTClient(ctx context.Context) (*rest.RESTClient, e
 		return nil, errors.New("config provider not initialized")
 	}
 
-	reqCtx := contexthandler.FromContext(ctx)
-	if reqCtx == nil {
-		return nil, errors.New("no request context")
+	reqCtx, err := requestContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	cfg := dynamic.ConfigFor(s.configProvider.GetDirectRestConfig(reqCtx))
+	cfg := dynamic.ConfigFor(s.directRestConfig(reqCtx))
 	cfg.GroupVersion = &iamv0alpha1.GroupVersion
 	return rest.RESTClientFor(cfg)
 }
