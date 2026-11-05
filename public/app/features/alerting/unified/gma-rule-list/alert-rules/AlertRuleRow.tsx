@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { type ReactNode, useId } from 'react';
 
 import { type AlertRule } from '@grafana/api-clients/rtkq/rules.alerting/v0alpha1';
 import { Stack, TextLink } from '@grafana/ui';
@@ -13,7 +13,6 @@ import { RuleListItem } from '../rule-row/RuleListItem';
 import { RuleOriginBadge } from '../rule-row/RuleOriginBadge';
 import { RuleStatusIcon } from '../rule-row/RuleStatusIcon';
 
-import { AlertRuleActions } from './AlertRuleActions';
 import { type AlertRuleSearchHit } from './alertRuleSearchHit';
 
 interface AlertRuleRowProps {
@@ -22,11 +21,11 @@ interface AlertRuleRowProps {
   folderPath?: string[];
   /** Full rule resource; absent while loading or when the fetch failed. */
   rule?: AlertRule;
-  /** True while the rule fetch is in flight; false once settled (success or failure). */
-  ruleIsLoading?: boolean;
+  /** Edit button, More dropdown, or a loading skeleton — provided by AlertRuleListEntry. */
+  actions?: ReactNode;
 }
 
-export function AlertRuleRow({ searchHit, folderPath, rule, ruleIsLoading = false }: AlertRuleRowProps) {
+export function AlertRuleRow({ searchHit, folderPath, rule, actions }: AlertRuleRowProps) {
   const titleId = useId();
 
   return (
@@ -47,10 +46,12 @@ export function AlertRuleRow({ searchHit, folderPath, rule, ruleIsLoading = fals
         )
       }
       right={
-        <Stack alignItems="center" gap={1.5} wrap={false}>
-          {searchHit.interval && <RuleInterval interval={searchHit.interval} />}
-          <AlertRuleActions searchHit={searchHit} rule={rule} ruleIsLoading={ruleIsLoading} />
-        </Stack>
+        (searchHit.interval || actions) && (
+          <Stack alignItems="center" gap={1.5} wrap={false}>
+            {searchHit.interval && <RuleInterval interval={searchHit.interval} />}
+            {actions}
+          </Stack>
+        )
       }
       meta={[
         folderPath && folderPath.length > 0 && <FolderPath key="folder" segments={folderPath} />,
