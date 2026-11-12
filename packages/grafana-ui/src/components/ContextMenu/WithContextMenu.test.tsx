@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { WithContextMenu } from './WithContextMenu';
@@ -103,4 +103,42 @@ describe('WithContextMenu', () => {
     // with ContextMenu's own ±5px offset applied.
     expect(screen.getByRole('menu')).toHaveStyle({ left: '120px', top: '215px' });
   });
+});
+
+it.each(['pointer', 'keyboard'])('follows its %s trigger when a parent or page scrolls', async (activation) => {
+  render(
+    <div data-testid="scroller">
+      <WithContextMenu renderMenuItems={renderMenuItems}>
+        {({ openMenu }) => (
+          <button onClick={(event) => openMenu(activation === 'keyboard' ? event.currentTarget : event)}>
+            Open links
+          </button>
+        )}
+      </WithContextMenu>
+    </div>
+  );
+  const trigger = screen.getByRole('button');
+  const initialRect = {
+    x: 100,
+    y: 200,
+    left: 100,
+    top: 200,
+    right: 150,
+    bottom: 220,
+    width: 50,
+    height: 20,
+    toJSON: () => ({}),
+  };
+  const rect = jest.spyOn(trigger, 'getBoundingClientRect');
+  rect.mockReturnValue(initialRect);
+  await userEvent.pointer({ target: trigger, keys: '[MouseLeft]', coords: { clientX: 125, clientY: 210 } });
+  expect(screen.getByRole('menu')).toHaveStyle({ left: '120px', top: '215px' });
+
+  rect.mockReturnValue({ ...initialRect, left: 80, top: 100 });
+  fireEvent.scroll(screen.getByTestId('scroller'));
+  expect(screen.getByRole('menu')).toHaveStyle({ left: '100px', top: '115px' });
+
+  rect.mockReturnValue({ ...initialRect, left: 80, top: 150 });
+  fireEvent.scroll(window);
+  expect(screen.getByRole('menu')).toHaveStyle({ left: '100px', top: '165px' });
 });

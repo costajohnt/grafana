@@ -1,11 +1,11 @@
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import * as React from 'react';
 
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 
 /**
  * Anything we can resolve into a viewport `{ x, y }` position for the context menu:
- *   - A React or native pointer event → use `pageX`/`pageY` (legacy, click-driven path);
+ *   - A React or native pointer event → use `clientX`/`clientY` (legacy, click-driven path);
  *                                       keyboard-synthesized clicks (`detail` 0) anchor
  *                                       to the event's `currentTarget` element instead
  *   - A DOM/SVG element              → use the element's bounding-rect center
@@ -36,13 +36,13 @@ function resolveTriggerPosition(trigger: OpenMenuTrigger): { x: number; y: numbe
   if (trigger instanceof Element) {
     const rect = trigger.getBoundingClientRect();
     return {
-      x: rect.left + rect.width / 2 + window.scrollX,
+      x: rect.left + rect.width / 2,
       y: rect.top + rect.height / 2,
     };
   }
 
   // trigger: MouseEvent
-  if ('pageX' in trigger && 'pageY' in trigger) {
+  if ('clientX' in trigger && 'clientY' in trigger) {
     // Keyboard or assistive-tech activation of a native control dispatches a
     // click without a pointer position (`detail` is 0 and the coordinates sit
     // at the viewport origin), so anchor to the element that fired the event
@@ -50,7 +50,7 @@ function resolveTriggerPosition(trigger: OpenMenuTrigger): { x: number; y: numbe
     if (trigger.detail === 0 && trigger.currentTarget instanceof Element) {
       return resolveTriggerPosition(trigger.currentTarget);
     }
-    return { x: trigger.pageX, y: trigger.pageY - window.scrollY };
+    return { x: trigger.clientX, y: trigger.clientY };
   }
 
   // Manually defined coordinates
@@ -60,12 +60,45 @@ function resolveTriggerPosition(trigger: OpenMenuTrigger): { x: number; y: numbe
 export const WithContextMenu = ({ children, renderMenuItems, focusOnOpen = true }: WithContextMenuProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [anchor, setAnchor] = useState<{ element: Element; offsetX: number; offsetY: number }>();
+
+  useEffect(() => {
+    if (!isMenuOpen || !anchor) {
+      return;
+    }
+
+    const updatePosition = () => {
+      if (!anchor.element.isConnected) {
+        setIsMenuOpen(false);
+        return;
+      }
+      const rect = anchor.element.getBoundingClientRect();
+      setMenuPosition({ x: rect.left + anchor.offsetX, y: rect.top + anchor.offsetY });
+    };
+
+    // Capture also catches scrolling inside dashboard and panel containers.
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [anchor, isMenuOpen]);
   return (
     <>
       {children({
         openMenu: (trigger) => {
+          const position = resolveTriggerPosition(trigger);
+          const element =
+            trigger instanceof Element ? trigger : 'currentTarget' in trigger ? trigger.currentTarget : null;
+          if (element instanceof Element) {
+            const rect = element.getBoundingClientRect();
+            setAnchor({ element, offsetX: position.x - rect.left, offsetY: position.y - rect.top });
+          } else {
+            setAnchor(undefined);
+          }
           setIsMenuOpen(true);
-          setMenuPosition(resolveTriggerPosition(trigger));
+          setMenuPosition(position);
         },
       })}
 
