@@ -32,7 +32,7 @@ describe('VizTooltipFooter', () => {
         <VizTooltipFooter dataLinks={[link]} />
       </MemoryRouter>
     );
-    await userEvent.click(screen.getByRole('link'));
+    await userEvent.click(screen.getByRole('menuitem'));
     expect(onClick).toHaveBeenCalled();
     jest.spyOn(console, 'warn').mockRestore();
   });

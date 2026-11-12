@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { type ReactNode, useMemo } from 'react';
+import { type ReactNode, useContext, useMemo } from 'react';
 
 import {
   type ActionModel,
@@ -14,11 +14,13 @@ import { Trans } from '@grafana/i18n';
 import { useStyles2 } from '../../themes/ThemeContext';
 import { ActionButton } from '../Actions/ActionButton';
 import { Button } from '../Button/Button';
-import { DataLinkButton } from '../DataLinks/DataLinkButton';
 import { Icon } from '../Icon/Icon';
 import { Stack } from '../Layout/Stack/Stack';
 import { type ResponsiveProp } from '../Layout/utils/responsiveness';
+import { Menu } from '../Menu/Menu';
 import { type AdHocFilterItem } from '../Table/TableNG/types';
+
+import { VizTooltipContext } from './VizTooltipWrapper';
 
 /** @alpha */
 export interface AdHocFilterModel extends AdHocFilterItem {
@@ -93,16 +95,6 @@ function makeRenderLinksOrActions<T extends LinkModel | ActionModel>(
   return renderLinksOrActions;
 }
 
-const renderDataLinks = makeRenderLinksOrActions<LinkModel>(
-  (title) => (
-    <Trans i18nKey="grafana-ui.viz-tooltip.footer-click-to-navigate">Click to open {{ linkTitle: title }}</Trans>
-  ),
-  (item, i, styles) => (
-    <DataLinkButton link={item} key={i} buttonProps={{ className: styles.dataLinkButton, fill: 'text' }} />
-  ),
-  0.5
-);
-
 const renderActions = makeRenderLinksOrActions<ActionModel>(
   (title) => <Trans i18nKey="grafana-ui.viz-tooltip.footer-click-to-action">Click to {{ actionTitle: title }}</Trans>,
   (item, i) => <ActionButton key={i} action={item} variant="secondary" />
@@ -118,12 +110,60 @@ export const VizTooltipFooter = ({
   additionalContent,
 }: VizTooltipFooterProps) => {
   const styles = useStyles2(getStyles);
+  const context = useContext(VizTooltipContext);
   const hasOneClickLink = useMemo(() => dataLinks.some((link) => link.oneClick === true), [dataLinks]);
   const hasOneClickAction = useMemo(() => actions.some((action) => action.oneClick === true), [actions]);
 
   return (
     <div className={styles.wrapper}>
-      {!hasOneClickAction && renderDataLinks(dataLinks, styles)}
+      {!hasOneClickAction &&
+        dataLinks.length > 0 &&
+        (hasOneClickLink ? (
+          <div className={styles.footerSection}>
+            <span className={styles.oneClickWrapper}>
+              <Icon name="info-circle" size="lg" className={styles.infoIcon} />
+              <Trans i18nKey="grafana-ui.viz-tooltip.footer-click-to-navigate">
+                Click to open {{ linkTitle: dataLinks.find((link) => link.oneClick)?.title }}
+              </Trans>
+            </span>
+          </div>
+        ) : (
+          <Menu
+            style={{ border: 'none', boxShadow: 'none', display: 'block', maxWidth: '100%' }}
+            autoFocus={false}
+            {...context?.menuProps}
+            onKeyDownCapture={(event) => {
+              context?.menuProps?.onKeyDownCapture?.(event);
+              if (event.isPropagationStopped() || event.defaultPrevented) {
+                return;
+              }
+              // Keep footer controls reachable and avoid activating anchors twice on Space.
+              if (event.key === 'Tab') {
+                event.stopPropagation();
+              } else if (event.key === ' ' && event.target instanceof HTMLAnchorElement) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.target.click();
+              }
+            }}
+          >
+            {dataLinks.map((link, i) => (
+              <Menu.Item
+                key={i}
+                label={link.title}
+                url={link.href}
+                target={link.target}
+                icon={link.target === '_blank' ? 'external-link-alt' : 'link'}
+                onClick={(event) => {
+                  if (link.onClick && !(event.ctrlKey || event.metaKey || event.shiftKey)) {
+                    event.preventDefault();
+                    link.onClick(event);
+                  }
+                }}
+              />
+            ))}
+          </Menu>
+        ))}
       {!hasOneClickLink && renderActions(actions, styles)}
       {!hasOneClickLink && !hasOneClickAction && adHocFilters.length > 0 && (
         <div className={styles.footerSection}>
@@ -181,23 +221,16 @@ const getStyles = (theme: GrafanaTheme2) => ({
     flexDirection: 'column',
     flex: 1,
     padding: theme.spacing(0),
+    '& > [role="menu"]': {
+      '& a, & a span': {
+        overflowWrap: 'anywhere',
+        whiteSpace: 'normal',
+      },
+    },
   }),
   footerSection: css({
     borderTop: `1px solid ${theme.colors.border.medium}`,
     padding: theme.spacing(1),
-  }),
-  dataLinkButton: css({
-    cursor: 'pointer',
-    '&:hover': {
-      textDecoration: 'underline',
-      background: 'none',
-    },
-    padding: 0,
-    height: 'auto',
-    '& span': {
-      whiteSpace: 'normal',
-      textAlign: 'left',
-    },
   }),
   oneClickWrapper: css({
     display: 'flex',

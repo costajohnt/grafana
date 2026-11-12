@@ -4,12 +4,11 @@ import * as React from 'react';
 
 import { type ActionModel, type GrafanaTheme2, type LinkModel } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
+import { t } from '@grafana/i18n';
 
 import { useStyles2 } from '../../themes/ThemeContext';
-import { linkModelToContextMenuItems } from '../../utils/dataLinks';
 import { type OpenMenuTrigger, WithContextMenu } from '../ContextMenu/WithContextMenu';
-import { MenuGroup, type MenuItemsGroup } from '../Menu/MenuGroup';
-import { MenuItem } from '../Menu/MenuItem';
+import { Menu } from '../Menu/Menu';
 
 export interface DataLinksContextMenuProps {
   children: (props: DataLinksContextMenuApi) => JSX.Element;
@@ -58,29 +57,22 @@ export interface DataLinksContextMenuApi {
 export const DataLinksContextMenu = ({ children, links, style }: DataLinksContextMenuProps) => {
   const styles = useStyles2(getStyles);
 
-  const itemsGroup: MenuItemsGroup[] = [
-    { items: linkModelToContextMenuItems(links), label: Boolean(links().length) ? 'Data links' : '' },
-  ];
-
-  const linksCounter = itemsGroup[0].items.length;
-  const renderMenuGroupItems = () => {
-    return itemsGroup.map((group, groupIdx) => (
-      <MenuGroup key={`${group.label}${groupIdx}`} label={group.label}>
-        {(group.items || []).map((item, itemIdx) => (
-          <MenuItem
-            key={`${group.label}-${groupIdx}-${itemIdx}}`}
-            url={item.url}
-            label={item.label}
-            target={item.target}
-            icon={item.icon}
-            active={item.active}
-            onClick={item.onClick}
-            className={styles.itemWrapper}
-          />
-        ))}
-      </MenuGroup>
-    ));
-  };
+  const dataLinks = links();
+  const linksCounter = dataLinks.length;
+  const renderMenuItems = () => (
+    <Menu.Group label={t('grafana-ui.data-links-context-menu.data-links', 'Data links')}>
+      {dataLinks.map((link, index) => (
+        <Menu.Item
+          key={index}
+          url={link.href}
+          label={link.title}
+          target={link.target}
+          icon={link.target === '_blank' ? 'external-link-alt' : 'link'}
+          onClick={link.onClick}
+        />
+      ))}
+    </Menu.Group>
+  );
 
   // Class consumers can apply to their click target purely as a visual "this
   // opens a context menu" affordance (cursor only). Behaviour is exposed
@@ -89,7 +81,7 @@ export const DataLinksContextMenu = ({ children, links, style }: DataLinksContex
 
   if (linksCounter > 1) {
     return (
-      <WithContextMenu renderMenuItems={renderMenuGroupItems}>
+      <WithContextMenu renderMenuItems={renderMenuItems}>
         {({ openMenu }) => {
           // Keyboard activation — anchor the menu to the trigger element
           // itself instead of fabricating a synthetic MouseEvent. This works
@@ -111,7 +103,7 @@ export const DataLinksContextMenu = ({ children, links, style }: DataLinksContex
       </WithContextMenu>
     );
   } else if (linksCounter === 1) {
-    const linkModel = links()[0];
+    const linkModel = dataLinks[0];
     return (
       <a
         href={linkModel.href}
@@ -142,9 +134,6 @@ export const DataLinksContextMenu = ({ children, links, style }: DataLinksContex
 };
 
 const getStyles = (theme: GrafanaTheme2) => ({
-  itemWrapper: css({
-    fontSize: 12,
-  }),
   // The single-link path used to ship only inline styles; the `:focus-visible`
   // ring is the one piece of polish that was missing and the reason panels
   // were re-implementing this branch themselves. Layout shorthands stay

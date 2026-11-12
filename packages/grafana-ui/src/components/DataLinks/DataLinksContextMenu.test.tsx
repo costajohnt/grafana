@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import { createTheme } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
 
 import { DataLinksContextMenu } from './DataLinksContextMenu';
@@ -33,7 +34,9 @@ describe('DataLinksContextMenu', () => {
     await userEvent.click(screen.getByLabelText('trigger'));
 
     expect(screen.getByText('Data links')).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: 'Link1' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Link1' })).toHaveStyle({
+      fontSize: createTheme().typography.body.fontSize,
+    });
     expect(screen.getByRole('menuitem', { name: 'Link2' })).toBeInTheDocument();
   });
 
