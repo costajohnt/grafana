@@ -33,7 +33,7 @@ describe('DataLinksContextMenu', () => {
 
     await userEvent.click(screen.getByLabelText('trigger'));
 
-    expect(screen.getByText('Data links')).toBeInTheDocument();
+    expect(screen.queryByText('Data links')).not.toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Link1' })).toHaveStyle({
       fontSize: createTheme().typography.body.fontSize,
     });

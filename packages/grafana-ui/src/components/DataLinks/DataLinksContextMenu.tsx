@@ -4,7 +4,6 @@ import * as React from 'react';
 
 import { type ActionModel, type GrafanaTheme2, type LinkModel } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
-import { t } from '@grafana/i18n';
 
 import { useStyles2 } from '../../themes/ThemeContext';
 import { type OpenMenuTrigger, WithContextMenu } from '../ContextMenu/WithContextMenu';
@@ -59,20 +58,17 @@ export const DataLinksContextMenu = ({ children, links, style }: DataLinksContex
 
   const dataLinks = links();
   const linksCounter = dataLinks.length;
-  const renderMenuItems = () => (
-    <Menu.Group label={t('grafana-ui.data-links-context-menu.data-links', 'Data links')}>
-      {dataLinks.map((link, index) => (
-        <Menu.Item
-          key={index}
-          url={link.href}
-          label={link.title}
-          target={link.target}
-          icon={link.target === '_blank' ? 'external-link-alt' : 'link'}
-          onClick={link.onClick}
-        />
-      ))}
-    </Menu.Group>
-  );
+  const renderMenuItems = () =>
+    dataLinks.map((link, index) => (
+      <Menu.Item
+        key={index}
+        url={link.href}
+        label={link.title}
+        target={link.target}
+        icon={link.target === '_blank' ? 'external-link-alt' : 'link'}
+        onClick={link.onClick}
+      />
+    ));
 
   // Class consumers can apply to their click target purely as a visual "this
   // opens a context menu" affordance (cursor only). Behaviour is exposed
