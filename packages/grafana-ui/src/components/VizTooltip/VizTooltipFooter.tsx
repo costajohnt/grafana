@@ -1,4 +1,4 @@
-import { css } from '@emotion/css';
+import { css, cx } from '@emotion/css';
 import { type ReactNode, useContext, useMemo } from 'react';
 
 import {
@@ -116,7 +116,12 @@ export const VizTooltipFooter = ({
   const hasOneClickAction = useMemo(() => actions.some((action) => action.oneClick === true), [actions]);
 
   return (
-    <div className={styles.wrapper}>
+    <div
+      className={cx(
+        styles.wrapper,
+        !hasOneClickLink && !hasOneClickAction && dataLinks.length > 0 && styles.linkSeparator
+      )}
+    >
       {!hasOneClickAction &&
         dataLinks.length > 0 &&
         (hasOneClickLink ? (
@@ -213,6 +218,11 @@ const getStyles = (theme: GrafanaTheme2) => ({
         overflowWrap: 'anywhere',
         whiteSpace: 'normal',
       },
+    },
+  }),
+  linkSeparator: css({
+    '&:not(:first-child)': {
+      borderTop: `1px solid ${theme.colors.border.medium}`,
     },
   }),
   footerSection: css({
