@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { createTheme, type LinkModel, type ActionModel } from '@grafana/data';
@@ -248,4 +248,48 @@ describe('DataLinksActionsTooltip', () => {
 
     expect(screen.getByTestId('custom-value')).toBeInTheDocument();
   });
+});
+
+it('follows the clicked cell when its scroll container moves', async () => {
+  const scroller = document.createElement('div');
+  scroller.style.overflow = 'auto';
+  const cell = document.createElement('div');
+  scroller.appendChild(cell);
+  document.body.appendChild(scroller);
+  const rect = jest.spyOn(cell, 'getBoundingClientRect');
+  const initialRect = {
+    x: 100,
+    y: 200,
+    left: 100,
+    top: 200,
+    right: 150,
+    bottom: 220,
+    width: 50,
+    height: 20,
+    toJSON: () => ({}),
+  };
+  rect.mockReturnValue(initialRect);
+  const width = jest.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1024);
+  const height = jest.spyOn(document.documentElement, 'clientHeight', 'get').mockReturnValue(768);
+  try {
+    const { unmount } = render(
+      <DataLinksActionsTooltip
+        links={[
+          { title: 'First', href: '#first', origin: {} },
+          { title: 'Second', href: '#second', origin: {} },
+        ]}
+        coords={{ clientX: 125, clientY: 210, contextElement: cell }}
+      />
+    );
+    const tooltip = screen.getByTestId(selectors.components.DataLinksActionsTooltip.tooltipWrapper);
+    await waitFor(() => expect(tooltip).toHaveStyle({ transform: 'translate(125px, 210px)' }));
+    rect.mockReturnValue({ ...initialRect, left: 80, top: 100 });
+    fireEvent.scroll(scroller);
+    await waitFor(() => expect(tooltip).toHaveStyle({ transform: 'translate(105px, 110px)' }));
+    unmount();
+  } finally {
+    width.mockRestore();
+    height.mockRestore();
+    scroller.remove();
+  }
 });

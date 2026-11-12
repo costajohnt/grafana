@@ -1,4 +1,4 @@
-import { useDismiss, useFloating, useInteractions } from '@floating-ui/react';
+import { autoUpdate, useDismiss, useFloating, useInteractions } from '@floating-ui/react';
 import { useMemo, type ReactNode } from 'react';
 
 import { type ActionModel, type LinkModel } from '@grafana/data';
@@ -41,20 +41,24 @@ export const DataLinksActionsTooltip = ({
   const middleware = getPositioningMiddleware(placement);
 
   const virtual = useMemo(() => {
-    const { clientX, clientY } = coords;
+    const { clientX, clientY, contextElement } = coords;
+    const initialRect = contextElement?.getBoundingClientRect();
 
-    // https://floating-ui.com/docs/virtual-elements
     return {
+      contextElement,
       getBoundingClientRect() {
+        const rect = contextElement?.getBoundingClientRect();
+        const x = clientX + (rect && initialRect ? rect.left - initialRect.left : 0);
+        const y = clientY + (rect && initialRect ? rect.top - initialRect.top : 0);
         return {
           width: 0,
           height: 0,
-          x: clientX,
-          y: clientY,
-          top: clientY,
-          left: clientX,
-          right: clientX,
-          bottom: clientY,
+          x,
+          y,
+          top: y,
+          left: x,
+          right: x,
+          bottom: y,
         };
       },
     };
@@ -70,7 +74,7 @@ export const DataLinksActionsTooltip = ({
     placement,
     onOpenChange: onTooltipClose,
     middleware,
-    // whileElementsMounted: autoUpdate,
+    whileElementsMounted: autoUpdate,
   });
 
   const dismiss = useDismiss(context);

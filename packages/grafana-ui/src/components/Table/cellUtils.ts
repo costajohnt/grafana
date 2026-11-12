@@ -203,6 +203,7 @@ export interface DataLinksActionsTooltipState {
 }
 
 export interface DataLinksActionsTooltipCoords {
+  contextElement?: Element;
   clientX: number;
   clientY: number;
 }
@@ -227,7 +228,7 @@ export const tooltipOnClickHandler = (setTooltipCoords: (coords: DataLinksAction
   return (event: React.MouseEvent<HTMLElement>) => {
     if (shouldTriggerTooltip(event)) {
       const { clientX, clientY } = event;
-      setTooltipCoords({ clientX, clientY });
+      setTooltipCoords({ clientX, clientY, contextElement: event.currentTarget });
     }
   };
 };
