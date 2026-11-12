@@ -14,6 +14,7 @@ import { Trans } from '@grafana/i18n';
 import { useStyles2 } from '../../themes/ThemeContext';
 import { ActionButton } from '../Actions/ActionButton';
 import { Button } from '../Button/Button';
+import { DataLinkMenuItems } from '../DataLinks/DataLinkMenuItems';
 import { Icon } from '../Icon/Icon';
 import { Stack } from '../Layout/Stack/Stack';
 import { type ResponsiveProp } from '../Layout/utils/responsiveness';
@@ -147,21 +148,7 @@ export const VizTooltipFooter = ({
               }
             }}
           >
-            {dataLinks.map((link, i) => (
-              <Menu.Item
-                key={i}
-                label={link.title}
-                url={link.href}
-                target={link.target}
-                icon={link.target === '_blank' ? 'external-link-alt' : 'link'}
-                onClick={(event) => {
-                  if (link.onClick && !(event.ctrlKey || event.metaKey || event.shiftKey)) {
-                    event.preventDefault();
-                    link.onClick(event);
-                  }
-                }}
-              />
-            ))}
+            <DataLinkMenuItems links={dataLinks} />
           </Menu>
         ))}
       {!hasOneClickLink && renderActions(actions, styles)}

@@ -1,11 +1,12 @@
 import { autoUpdate, useDismiss, useFloating, useInteractions } from '@floating-ui/react';
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 import { type ActionModel, type LinkModel } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
 
 import { useTheme2 } from '../../themes/ThemeContext';
-import { getPositioningMiddleware, SCROLL_DISMISS_DISTANCE } from '../../utils/floating';
+import { getPositioningMiddleware } from '../../utils/floating';
+import { useAnchoredMenu } from '../ContextMenu/useAnchoredMenu';
 import { Portal } from '../Portal/Portal';
 import { VizTooltipFooter } from '../VizTooltip/VizTooltipFooter';
 import { VizTooltipWrapper } from '../VizTooltip/VizTooltipWrapper';
@@ -40,59 +41,11 @@ export const DataLinksActionsTooltip = ({
   // the order of middleware is important!
   const middleware = getPositioningMiddleware(placement);
 
-  const virtual = useMemo(() => {
-    const { clientX, clientY, contextElement } = coords;
-    const initialRect = contextElement?.getBoundingClientRect();
-
-    return {
-      contextElement,
-      getBoundingClientRect() {
-        const rect = contextElement?.getBoundingClientRect();
-        const x = clientX + (rect && initialRect ? rect.left - initialRect.left : 0);
-        const y = clientY + (rect && initialRect ? rect.top - initialRect.top : 0);
-        return {
-          width: 0,
-          height: 0,
-          x,
-          y,
-          top: y,
-          left: x,
-          right: x,
-          bottom: y,
-        };
-      },
-    };
-  }, [coords]);
-
-  useEffect(() => {
-    if (!virtual.contextElement || !onTooltipClose) {
-      return;
-    }
-
-    let dismissed = false;
-    const onScroll = () => {
-      if (dismissed) {
-        return;
-      }
-      const rect = virtual.getBoundingClientRect();
-      if (
-        !virtual.contextElement?.isConnected ||
-        Math.abs(rect.left - coords.clientX) > SCROLL_DISMISS_DISTANCE ||
-        Math.abs(rect.top - coords.clientY) > SCROLL_DISMISS_DISTANCE
-      ) {
-        dismissed = true;
-        onTooltipClose();
-      }
-    };
-
-    // Capture scroll events from nested table and dashboard containers too.
-    window.addEventListener('scroll', onScroll, true);
-    return () => window.removeEventListener('scroll', onScroll, true);
-  }, [coords, onTooltipClose, virtual]);
+  const { reference: virtual } = useAnchoredMenu(coords, onTooltipClose);
 
   const refCallback = (el: HTMLDivElement) => {
     refs.setFloating(el);
-    refs.setReference(virtual);
+    refs.setReference(virtual ?? null);
   };
 
   const { context, refs, floatingStyles } = useFloating({

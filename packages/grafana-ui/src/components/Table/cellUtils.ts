@@ -18,6 +18,7 @@ import {
 } from '@grafana/schema';
 
 import { getTextColorForAlphaBackground } from '../../utils/colors';
+import { type MenuAnchor } from '../ContextMenu/useAnchoredMenu';
 
 import { type CellColors, type TableCellOptions, type TableFieldOptions } from './types';
 
@@ -202,11 +203,7 @@ export interface DataLinksActionsTooltipState {
   actions?: ActionModel[];
 }
 
-export interface DataLinksActionsTooltipCoords {
-  contextElement?: Element;
-  clientX: number;
-  clientY: number;
-}
+export type DataLinksActionsTooltipCoords = MenuAnchor;
 
 export const getDataLinksActionsTooltipUtils = (links: LinkModel[], actions?: ActionModel[]) => {
   const hasMultipleLinksOrActions = links.length > 1 || Boolean(actions?.length);

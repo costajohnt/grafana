@@ -1,8 +1,9 @@
-import { useEffect, useState, type JSX } from 'react';
+import { useState, type JSX } from 'react';
 import * as React from 'react';
 
-import { SCROLL_DISMISS_DISTANCE } from '../../utils/floating';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
+
+import { type MenuAnchor, useAnchoredMenu } from './useAnchoredMenu';
 
 /**
  * Anything we can resolve into a viewport `{ x, y }` position for the context menu:
@@ -60,44 +61,8 @@ function resolveTriggerPosition(trigger: OpenMenuTrigger): { x: number; y: numbe
 
 export const WithContextMenu = ({ children, renderMenuItems, focusOnOpen = true }: WithContextMenuProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
-  const [anchor, setAnchor] = useState<{
-    element: Element;
-    offsetX: number;
-    offsetY: number;
-    initialLeft: number;
-    initialTop: number;
-  }>();
-
-  useEffect(() => {
-    if (!isMenuOpen || !anchor) {
-      return;
-    }
-
-    const updatePosition = () => {
-      if (!anchor.element.isConnected) {
-        setIsMenuOpen(false);
-        return;
-      }
-      const rect = anchor.element.getBoundingClientRect();
-      if (
-        Math.abs(rect.left - anchor.initialLeft) > SCROLL_DISMISS_DISTANCE ||
-        Math.abs(rect.top - anchor.initialTop) > SCROLL_DISMISS_DISTANCE
-      ) {
-        setIsMenuOpen(false);
-        return;
-      }
-      setMenuPosition({ x: rect.left + anchor.offsetX, y: rect.top + anchor.offsetY });
-    };
-
-    // Capture also catches scrolling inside dashboard and panel containers.
-    window.addEventListener('scroll', updatePosition, true);
-    window.addEventListener('resize', updatePosition);
-    return () => {
-      window.removeEventListener('scroll', updatePosition, true);
-      window.removeEventListener('resize', updatePosition);
-    };
-  }, [anchor, isMenuOpen]);
+  const [anchor, setAnchor] = useState<MenuAnchor>();
+  const { position: menuPosition } = useAnchoredMenu(isMenuOpen ? anchor : undefined, () => setIsMenuOpen(false));
   return (
     <>
       {children({
@@ -105,20 +70,12 @@ export const WithContextMenu = ({ children, renderMenuItems, focusOnOpen = true 
           const position = resolveTriggerPosition(trigger);
           const element =
             trigger instanceof Element ? trigger : 'currentTarget' in trigger ? trigger.currentTarget : null;
-          if (element instanceof Element) {
-            const rect = element.getBoundingClientRect();
-            setAnchor({
-              element,
-              offsetX: position.x - rect.left,
-              offsetY: position.y - rect.top,
-              initialLeft: rect.left,
-              initialTop: rect.top,
-            });
-          } else {
-            setAnchor(undefined);
-          }
+          setAnchor({
+            clientX: position.x,
+            clientY: position.y,
+            contextElement: element instanceof Element ? element : undefined,
+          });
           setIsMenuOpen(true);
-          setMenuPosition(position);
         },
       })}
 

@@ -7,7 +7,8 @@ import { selectors } from '@grafana/e2e-selectors';
 
 import { useStyles2 } from '../../themes/ThemeContext';
 import { type OpenMenuTrigger, WithContextMenu } from '../ContextMenu/WithContextMenu';
-import { Menu } from '../Menu/Menu';
+
+import { DataLinkMenuItems } from './DataLinkMenuItems';
 
 export interface DataLinksContextMenuProps {
   children: (props: DataLinksContextMenuApi) => JSX.Element;
@@ -58,17 +59,7 @@ export const DataLinksContextMenu = ({ children, links, style }: DataLinksContex
 
   const dataLinks = links();
   const linksCounter = dataLinks.length;
-  const renderMenuItems = () =>
-    dataLinks.map((link, index) => (
-      <Menu.Item
-        key={index}
-        url={link.href}
-        label={link.title}
-        target={link.target}
-        icon={link.target === '_blank' ? 'external-link-alt' : 'link'}
-        onClick={link.onClick}
-      />
-    ));
+  const renderMenuItems = () => <DataLinkMenuItems links={dataLinks} />;
 
   // Class consumers can apply to their click target purely as a visual "this
   // opens a context menu" affordance (cursor only). Behaviour is exposed
