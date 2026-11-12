@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX } from 'react';
 import * as React from 'react';
 
+import { SCROLL_DISMISS_DISTANCE } from '../../utils/floating';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 
 /**
@@ -60,7 +61,13 @@ function resolveTriggerPosition(trigger: OpenMenuTrigger): { x: number; y: numbe
 export const WithContextMenu = ({ children, renderMenuItems, focusOnOpen = true }: WithContextMenuProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
-  const [anchor, setAnchor] = useState<{ element: Element; offsetX: number; offsetY: number }>();
+  const [anchor, setAnchor] = useState<{
+    element: Element;
+    offsetX: number;
+    offsetY: number;
+    initialLeft: number;
+    initialTop: number;
+  }>();
 
   useEffect(() => {
     if (!isMenuOpen || !anchor) {
@@ -73,6 +80,13 @@ export const WithContextMenu = ({ children, renderMenuItems, focusOnOpen = true 
         return;
       }
       const rect = anchor.element.getBoundingClientRect();
+      if (
+        Math.abs(rect.left - anchor.initialLeft) > SCROLL_DISMISS_DISTANCE ||
+        Math.abs(rect.top - anchor.initialTop) > SCROLL_DISMISS_DISTANCE
+      ) {
+        setIsMenuOpen(false);
+        return;
+      }
       setMenuPosition({ x: rect.left + anchor.offsetX, y: rect.top + anchor.offsetY });
     };
 
@@ -93,7 +107,13 @@ export const WithContextMenu = ({ children, renderMenuItems, focusOnOpen = true 
             trigger instanceof Element ? trigger : 'currentTarget' in trigger ? trigger.currentTarget : null;
           if (element instanceof Element) {
             const rect = element.getBoundingClientRect();
-            setAnchor({ element, offsetX: position.x - rect.left, offsetY: position.y - rect.top });
+            setAnchor({
+              element,
+              offsetX: position.x - rect.left,
+              offsetY: position.y - rect.top,
+              initialLeft: rect.left,
+              initialTop: rect.top,
+            });
           } else {
             setAnchor(undefined);
           }

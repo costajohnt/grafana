@@ -134,11 +134,54 @@ it.each(['pointer', 'keyboard'])('follows its %s trigger when a parent or page s
   await userEvent.pointer({ target: trigger, keys: '[MouseLeft]', coords: { clientX: 125, clientY: 210 } });
   expect(screen.getByRole('menu')).toHaveStyle({ left: '120px', top: '215px' });
 
-  rect.mockReturnValue({ ...initialRect, left: 80, top: 100 });
+  rect.mockReturnValue({ ...initialRect, left: 80, top: 160 });
   fireEvent.scroll(screen.getByTestId('scroller'));
-  expect(screen.getByRole('menu')).toHaveStyle({ left: '100px', top: '115px' });
+  expect(screen.getByRole('menu')).toHaveStyle({ left: '100px', top: '175px' });
 
   rect.mockReturnValue({ ...initialRect, left: 80, top: 150 });
   fireEvent.scroll(window);
   expect(screen.getByRole('menu')).toHaveStyle({ left: '100px', top: '165px' });
+});
+
+it.each([
+  { axis: 'left', direction: 1 },
+  { axis: 'left', direction: -1 },
+  { axis: 'top', direction: 1 },
+  { axis: 'top', direction: -1 },
+])('closes after scrolling more than 80px on $axis in direction $direction', async ({ axis, direction }) => {
+  render(
+    <div data-testid="scroller">
+      <WithContextMenu renderMenuItems={renderMenuItems}>
+        {({ openMenu }) => <button onClick={openMenu}>Open links</button>}
+      </WithContextMenu>
+    </div>
+  );
+  const trigger = screen.getByRole('button');
+  const initialRect = {
+    x: 200,
+    y: 200,
+    left: 200,
+    top: 200,
+    right: 250,
+    bottom: 220,
+    width: 50,
+    height: 20,
+    toJSON: () => ({}),
+  };
+  const rect = jest.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(initialRect);
+  await userEvent.click(trigger);
+  expect(screen.getByRole('menu')).toBeInTheDocument();
+  fireEvent.scroll(screen.getByRole('menu'));
+  expect(screen.getByRole('menu')).toBeInTheDocument();
+  rect.mockReturnValue({ ...initialRect, [axis]: 200 + 80 * direction });
+  fireEvent.scroll(window);
+  expect(screen.getByRole('menu')).toBeInTheDocument();
+  rect.mockReturnValue({ ...initialRect, [axis]: 200 + 81 * direction });
+  fireEvent.scroll(screen.getByTestId('scroller'));
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+
+  await userEvent.click(trigger);
+  expect(screen.getByRole('menu')).toBeInTheDocument();
+  fireEvent.scroll(window);
+  expect(screen.getByRole('menu')).toBeInTheDocument();
 });

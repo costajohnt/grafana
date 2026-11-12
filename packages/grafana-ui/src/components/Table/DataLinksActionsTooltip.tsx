@@ -5,14 +5,12 @@ import { type ActionModel, type LinkModel } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
 
 import { useTheme2 } from '../../themes/ThemeContext';
-import { getPositioningMiddleware } from '../../utils/floating';
+import { getPositioningMiddleware, SCROLL_DISMISS_DISTANCE } from '../../utils/floating';
 import { Portal } from '../Portal/Portal';
 import { VizTooltipFooter } from '../VizTooltip/VizTooltipFooter';
 import { VizTooltipWrapper } from '../VizTooltip/VizTooltipWrapper';
 
 import { type DataLinksActionsTooltipCoords } from './cellUtils';
-
-const SCROLL_DISMISS_DISTANCE = 80;
 
 interface Props {
   links: LinkModel[];
