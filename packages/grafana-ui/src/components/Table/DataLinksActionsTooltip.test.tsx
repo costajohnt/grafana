@@ -283,13 +283,58 @@ it('follows the clicked cell when its scroll container moves', async () => {
     );
     const tooltip = screen.getByTestId(selectors.components.DataLinksActionsTooltip.tooltipWrapper);
     await waitFor(() => expect(tooltip).toHaveStyle({ transform: 'translate(125px, 210px)' }));
-    rect.mockReturnValue({ ...initialRect, left: 80, top: 100 });
+    rect.mockReturnValue({ ...initialRect, left: 80, top: 160 });
     fireEvent.scroll(scroller);
-    await waitFor(() => expect(tooltip).toHaveStyle({ transform: 'translate(105px, 110px)' }));
+    await waitFor(() => expect(tooltip).toHaveStyle({ transform: 'translate(105px, 170px)' }));
     unmount();
   } finally {
     width.mockRestore();
     height.mockRestore();
     scroller.remove();
   }
+});
+
+it.each([
+  { axis: 'left', direction: 1 },
+  { axis: 'left', direction: -1 },
+  { axis: 'top', direction: 1 },
+  { axis: 'top', direction: -1 },
+])('dismisses after more than 80px of scrolling on $axis in direction $direction', ({ axis, direction }) => {
+  const cell = document.createElement('div');
+  const scroller = document.createElement('div');
+  scroller.appendChild(cell);
+  document.body.appendChild(scroller);
+  const initialRect = {
+    x: 200,
+    y: 200,
+    left: 200,
+    top: 200,
+    right: 250,
+    bottom: 220,
+    width: 50,
+    height: 20,
+    toJSON: () => ({}),
+  };
+  const rect = jest.spyOn(cell, 'getBoundingClientRect').mockReturnValue(initialRect);
+  const onTooltipClose = jest.fn();
+  const { unmount } = render(
+    <DataLinksActionsTooltip
+      links={[{ title: 'First', href: '#first', origin: {} }]}
+      coords={{ clientX: 225, clientY: 210, contextElement: cell }}
+      onTooltipClose={onTooltipClose}
+    />
+  );
+  expect(screen.getByRole('menuitem', { name: 'First' })).toBeInTheDocument();
+  fireEvent.scroll(screen.getByRole('menu'));
+  expect(onTooltipClose).not.toHaveBeenCalled();
+  rect.mockReturnValue({ ...initialRect, [axis]: 200 + 80 * direction });
+  fireEvent.scroll(window);
+  expect(onTooltipClose).not.toHaveBeenCalled();
+  rect.mockReturnValue({ ...initialRect, [axis]: 200 + 81 * direction });
+  fireEvent.scroll(scroller);
+  expect(onTooltipClose).toHaveBeenCalledTimes(1);
+  fireEvent.scroll(scroller);
+  expect(onTooltipClose).toHaveBeenCalledTimes(1);
+  unmount();
+  scroller.remove();
 });

@@ -1,5 +1,5 @@
 import { autoUpdate, useDismiss, useFloating, useInteractions } from '@floating-ui/react';
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 
 import { type ActionModel, type LinkModel } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
@@ -11,6 +11,8 @@ import { VizTooltipFooter } from '../VizTooltip/VizTooltipFooter';
 import { VizTooltipWrapper } from '../VizTooltip/VizTooltipWrapper';
 
 import { type DataLinksActionsTooltipCoords } from './cellUtils';
+
+const SCROLL_DISMISS_DISTANCE = 80;
 
 interface Props {
   links: LinkModel[];
@@ -63,6 +65,32 @@ export const DataLinksActionsTooltip = ({
       },
     };
   }, [coords]);
+
+  useEffect(() => {
+    if (!virtual.contextElement || !onTooltipClose) {
+      return;
+    }
+
+    let dismissed = false;
+    const onScroll = () => {
+      if (dismissed) {
+        return;
+      }
+      const rect = virtual.getBoundingClientRect();
+      if (
+        !virtual.contextElement?.isConnected ||
+        Math.abs(rect.left - coords.clientX) > SCROLL_DISMISS_DISTANCE ||
+        Math.abs(rect.top - coords.clientY) > SCROLL_DISMISS_DISTANCE
+      ) {
+        dismissed = true;
+        onTooltipClose();
+      }
+    };
+
+    // Capture scroll events from nested table and dashboard containers too.
+    window.addEventListener('scroll', onScroll, true);
+    return () => window.removeEventListener('scroll', onScroll, true);
+  }, [coords, onTooltipClose, virtual]);
 
   const refCallback = (el: HTMLDivElement) => {
     refs.setFloating(el);
